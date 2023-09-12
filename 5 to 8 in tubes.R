@@ -3,33 +3,38 @@ library(ggplot2)
 library(readr)
 
 
-data <- read_csv("~/student_documents/UBC/Research/Malawi/data/capillary/glamour shots and lys buff tube run/lys.tube_hem.size.csv")
+# read in and do some stuff with sizes_in_tube.csv
 
+sizes_in_tube <- read_csv("~/student_documents/UBC/Research/Malawi/data/capillary/glamour shots and lys buff tube run/sizes_in_tube.csv")
 
-# strip/ line chart of area x pH, coloured by indvd
-
-lys.tube <- data %>%
+tube.sacs.calc <- sizes_in_tube %>%
   group_by(indvd) %>%
   mutate(indvd = as.character(indvd)) %>%
-  mutate(norm5.pct = ((area - area[1])/area[1])*100) %>%
+  mutate(area.norm5.pct = ((area - area[1])/area[1])*100) %>%
   ungroup() %>%
   group_by(pH) %>%
   mutate(mean_area = mean(area)) %>%
   mutate(stdv_area = (sd(area))) %>%
   ungroup()
 
-print(lys.tube)
+print(tube.sacs.calc)
 
-# norm 5 plot
-ggplot(data = lys.tube,
-       aes(x = pH,
-           y = norm5.pct,
-           colour = indvd)) +
-  geom_point() +
-  geom_line()
 
-# mean abs area
-ggplot(data = lys.tube,
+# read in and do some stuff with size_in_animal.csv
+
+in_vivo_dimensions <- read_csv("~/student_documents/UBC/Research/Malawi/data/capillary/glamour shots and lys buff tube run/size_in_animal.csv") %>%
+  mutate(indvd = as.character(indvd)) %>%
+  #mutate(pH = NA) %>%
+  select(indvd, area, diameter)
+
+print(in_vivo_dimensions)
+
+mean(in_vivo_dimensions$area)
+
+
+# mean areas in experiment with horizontal mean line for size in intact animal
+## I was hoping for a better way to estimate this intersection, like via a sigmoid model??
+ggplot(data = tube.sacs.calc,
        aes(x = pH,
            y = mean_area,
            colour = indvd)) +
@@ -47,9 +52,9 @@ ggplot(data = lys.tube,
                 width = 0.2,
                 colour = "black")
 
-
-# absolute plot
-ggplot(data = lys.tube,
+# sac sizes in the experiment, with horizontal lines for each indicating airsac size in the intact animal
+## I tried matching the colours as best I could for now
+ggplot(data = tube.sacs.calc,
        aes(x = pH,
            y = area,
            colour = indvd)) +
@@ -64,6 +69,25 @@ ggplot(data = lys.tube,
   geom_hline(yintercept = 0.06351, colour = "deeppink1") #indvd 8
 
 
+# sizes normalized to pH5
+# with a mean %change line 
+
+tube.sacs.calc <- tube.sacs.calc %>%
+  group_by(pH) %>%
+  mutate(mean_for_pH = mean(area.norm5.pct)) %>%
+  ungroup() %>%
+  mutate(vivo_diff_5 = (((mean(in_vivo_dimensions$area)) - mean_area[1]) / mean_area[1]) *100 )
+
+print(tube.sacs.calc)
+
+ggplot(data = tube.sacs.calc,
+       aes(x = pH)) +
+  geom_point(aes(y = area.norm5.pct, colour = indvd)) +
+  geom_line(aes(y = area.norm5.pct, colour = indvd)) +
+  geom_line(aes(y = mean_for_pH)) +
+  geom_hline(yintercept = 1.3)
+
+
 
 # splitting in vivo sizes into the tube data frame
 
@@ -73,12 +97,4 @@ lys.tube_for.vivo <- data %>%
 print(lys.tube_for.vivo)
 
 
-# data frame with in vivo sac sizes
 
-in_vivo_dimensions <- read_csv("~/student_documents/UBC/Research/Malawi/data/capillary/glamour shots and lys buff tube run/in_vivo_dimensions.csv") %>%
-  mutate(indvd = as.character(indvd)) %>%
-  mutate(pH = NA) %>%
-  select(indvd, pH, area, diameter)
-print(in_vivo_dimensions)
-
-mean(in_vivo_dimensions$area)
